@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --job-name=mf
+#SBATCH --partition=short
+#SBATCH --output=slurm/logs/%x_%A_%a.out
+#SBATCH --error=slurm/err/%x_%A_%a.err
+#SBATCH --time=0-02:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=8G
+#SBATCH --array=1-100
+
+module load R-bundle-CRAN
+
+# SCENARIO_ID is passed inline when submitting, e.g.:
+#   SCENARIO_ID=1 sbatch slurm/missforest_array.txt
+ITER=${SLURM_ARRAY_TASK_ID}
+
+Rscript scripts/04_missforest.R --scenario_id ${SCENARIO_ID} --iter ${ITER}
