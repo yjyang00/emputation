@@ -1,0 +1,24 @@
+Package: emputation
+Type: Package
+Title: Identification-Guided Neural Imputation Framework
+Version: 0.1.0
+Authors@R: c(
+    person("Yanjiao", "Yang", role = c("aut", "cre"), email = "yjyang00@uw.edu"),
+    person("Yikun", "Zhang", role = "aut"),
+    person("Xinwei", "Shen", role = "aut"),
+    person("Yen-Chi", "Chen", role = "aut")
+    )
+Description: Emputation is a deep generative framework for learning imputation 
+    models. The emputation risk, is an energy-score-based risk function in which 
+    a chosen missing-data identification assumption (e.g. MCAR, complete-case 
+    missing variable / CCMV, or tree graph) guides training. 
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.1.0)
+Imports:
+    torch (>= 0.11.0),
+    stats,
+    graphics,
+    utils
+Config/roxygen2/version: 8.0.0
