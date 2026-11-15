@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+.pytest_cache/
+simulation/output/
+simulation/output_example/
+simulation/out/

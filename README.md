@@ -2,7 +2,7 @@
 
 Emputation is a deep generative framework for learning imputation models. It targets the extrapolation distribution of missing variables given observed variables, and its training is guided by missing-data assumptions that identify this target distribution. The training objective, called the emputation risk, is an energy-score-based risk in which the identification assumption determines how observed entries are masked and which observations contribute to training. After training, the fitted model supports direct conditional sampling for multiple imputation.
 
-This repository contains the code to reproduce the results in the paper: **Emputation: Identification-Guided Neural Imputation Framework**. A Python package will be made available in this repository in the near future.
+This repository contains the code to reproduce the results in the paper: **Emputation: Identification-Guided Neural Imputation Framework**. A Python implementation, including the simulation code, is in `python/`.
 
 ------------------------------------------------------------------------
 
@@ -64,3 +64,5 @@ The R package source code, simulation, and data-application analyses are organiz
 -   `simulation/` — Code and instructions for reproducing the simulation. See `simulation/README.md` for details.
 
 -   `data_application/` — Code and instructions for reproducing the data application results in the main paper and supplementary material. See `data_application/README.md` for details. The NACC data used in the real-data application are not provided in this repository. Researchers seeking access should submit a data request through [NACC](https://naccdata.org) and follow NACC’s data use policies.
+
+-   `python/` — Python implementation: the emputation Python package and the code for reproducing the simulation. See `python/README.md` for details.
