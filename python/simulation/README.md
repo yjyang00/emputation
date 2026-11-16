@@ -31,7 +31,9 @@ paper, from `reference_results/r_summary.csv`) and `variant_check.csv` (see *Ben
   the CCMV patterns of `../../simulation/src/R/specs`), `baselines/` (EM, MICE-PMM, missForest, GAIN, mean), `metrics.py`,
   `tasks.py` (pipeline stages), `figures.py`.
 - `run_simulation.py` — command-line driver of all stages.
-- `slurm/` — SLURM jobs (`submit_all.sh` submits everything; `emputation_gpu.sbatch` for the GPU partition).
+- `slurm/` — SLURM jobs: `submit_all.sh` submits everything through `feeder.py`/`feeder.sbatch`, which keep the
+  queue under the cluster's submit limit; `failed_tasks.py` lists failed tasks and the memory they used;
+  `emputation_gpu.sbatch` runs fits on the GPU partition.
 - `reference_results/r_summary.csv` — the R results shipped in `../../simulation/results` (converted from `.rda`).
 - `run_example.py` — small local run of the pipeline on the concrete data.
 
@@ -46,36 +48,37 @@ paper, from `reference_results/r_summary.csv`) and `variant_check.csv` (see *Ben
    ```bash
    bash slurm/submit_all.sh                    # all experiments
    bash slurm/submit_all.sh miss20             # only Figure 2 / S2a / Table S1
-   DRY_RUN=1 bash slurm/submit_all.sh          # print the sbatch commands
+   DRY_RUN=1 bash slurm/submit_all.sh          # print the plan: the arrays and their resources
    GPU=wine bash slurm/submit_all.sh           # the large wine fits on the GPU partition
    ```
 
-   The script chains `data.sbatch` -> `emputation.sbatch` / `baselines.sbatch` arrays (one array per
-   experiment and dataset; logs in `out/`) -> `aggregate.sbatch`, which writes the summaries to
-   `output/summary/` and the figures and tables to `output/figures/`. Partition names default to `short` and
-   `medium` (`SHORT=... MEDIUM=...` to change).
+   The script submits the emputation and benchmark arrays (logs in `out/`) and then `aggregate.sbatch`, which
+   writes the summaries to `output/summary/` (plus one table per setting in `output/results/`, in the layout of
+   `../../simulation/results`) and the figures and tables to `output/figures/`. All tasks run on the partition
+   `short` with a 10 h limit (`SHORT=... MEDIUM=...` to change the partition names).
 
-3. Unfinished tasks (time-outs, preemption) can be listed and resubmitted:
-
-   ```bash
-   python run_simulation.py missing --experiment miss20 --dataset wine --stage-name emputation
-   ```
-
-   Every task skips work whose output already exists, so rerunning `aggregate.sbatch` afterwards is enough.
+3. Rerunning `bash slurm/submit_all.sh` is safe: finished and queued tasks are skipped. Once the arrays have
+   run, it resubmits exactly the tasks that failed (time-outs, node failures) and then the aggregate job.
+   `python3 slurm/failed_tasks.py` lists the failed tasks per array, with the memory they requested and used,
+   and suggests a `mem-per-cpu` for tasks that ran out of memory (edit that row of `submit_all.sh` first).
 
 ### Resources
 
 The cost is dominated by the emputation fits, which use full-batch training as in the paper. One epoch
 processes every training term twice (B = 2), and the number of terms depends on the data:
 
-| | terms per fit | memory | requested |
-|---|---|---|---|
-| concrete | 1k-110k | < 3 GB | 8 CPUs, 8 GB, 4 h |
-| ccpp | 10k-170k | < 5 GB | 8 CPUs, 12 GB, 6 h |
-| wine, CCMV process / cc 60% | 10k-50k | < 2 GB | 8 CPUs, 8 GB |
-| wine, MAR (20%) / cc 5-10% | 0.5-1.0M | 13-25 GB | 16 CPUs, 24-40 GB |
-| wine, MCAR (20%), MAR (40%), cc 20-40% | 1.6-1.8M | 40-45 GB | 16 CPUs, 56-64 GB |
-| wine, MCAR (40%) | 2.8M | about 66 GB | 16 CPUs, 88 GB |
+| | terms per fit | memory | time per fit | requested |
+|---|---|---|---|---|
+| concrete | 1k-110k | < 3 GB | 1-8 min | 8 CPUs, 8 GB |
+| ccpp | 10k-170k | < 5 GB | 2-11 min | 8 CPUs, 12 GB |
+| wine, CCMV process / cc 60% | 10k-50k | < 2 GB | 2-4 min | 8 CPUs, 8 GB |
+| wine, MAR (20%) / cc 5-10% | 0.4-1.0M | 13-25 GB | 20-40 min | 16 CPUs, 24-40 GB |
+| wine, MCAR (20%), MAR (40%), cc 20-40% | 1.3-1.85M | 32-45 GB | 55-75 min | 16 CPUs, 56-64 GB |
+| wine, MCAR (40%) | 2.5-2.8M | about 67 GB | about 2 h | 16 CPUs, 88 GB |
+
+Times are from a pilot run on the cluster (a fit takes ~50 s + 3.7 ms per training term on 8 CPUs and 2.4 ms
+per term on 16 CPUs; each task adds 3-5 minutes for start-up and evaluation). The emputation fits take about
+32k core-hours in total, 85% of it for wine; the benchmarks about 1k.
 
 Memory is about 12 KB per network row (= 2 x terms). `submit_all.sh` requests these resources per
 experiment, dataset and setting. If large-memory nodes are scarce, `WINE_CHUNK_SIZE=300000 bash

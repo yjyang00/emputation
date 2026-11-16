@@ -4,7 +4,7 @@
 #SBATCH --array=1-600               # How many tasks in the array (see `python run_simulation.py tasks`)
 #SBATCH --cpus-per-task=8           # CPU threads used by PyTorch for one emputation fit
 #SBATCH --time 0-06:00              # Wall time limit in D-HH:MM
-#SBATCH --mem-per-cpu=1500          # Memory limit for each tasks (in MB)
+#SBATCH --mem-per-cpu=5000          # Memory limit for each tasks (in MB)
 #SBATCH -o out/emp_fit_%A_%a.out    # File to which STDOUT will be written
 #SBATCH -e out/emp_fit_%A_%a.err    # File to which STDERR will be written
 #SBATCH --mail-type=ALL             # Type of email notification- NONE,BEGIN,END,FAIL,ALL

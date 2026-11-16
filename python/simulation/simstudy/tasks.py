@@ -13,6 +13,7 @@ Output layout (``root`` defaults to ``simulation/output``)::
     root/<experiment>/<dataset>/<setting>/metrics/iter_###_<method>.csv
     root/<experiment>/<dataset>/<setting>/imputations/iter_###_<method>.npz   (optional)
     root/summary/{metrics,summary}_<experiment>.csv
+    root/results/results_<20|40|ccprop>/<dataset>_dgp<setting>.csv            (layout of Code/simulation/results)
 """
 
 import os
@@ -58,6 +59,10 @@ class Layout:
     @property
     def figures_dir(self):
         return self.root / "figures"
+
+    @property
+    def results_dir(self):
+        return self.root / "results"
 
 
 def _atomic_write(path, write):
@@ -225,6 +230,25 @@ def progress_report(layout, exp_names=None):
     return table
 
 
+R_METHOD_ORDER = ("EM", "MICE", "MF", "GAIN", "Mean", "Emp_mcar", "Emp_ccmv")  # rows of R's summary_df
+
+
+def export_results(layout, exp_name, summary):
+    """Write one table per (dataset, setting) in the layout of the R results (Code/simulation/results):
+    results/results_<20|40|ccprop>/<dataset>_dgp<setting>.csv, one row per method (R's order; the benchmark
+    variants last) with the columns of R's summary_df (mean of each metric over iterations), followed by the
+    standard deviations and the number of iterations."""
+    folder = layout.results_dir / f"results_{exp_name.removeprefix('miss')}"
+    folder.mkdir(parents=True, exist_ok=True)
+    summary = summary.rename(columns={f"{m}_std": f"{m}_sd" for m in METRICS})
+    cols = ["method"] + [f"{m}_mean" for m in METRICS] + [f"{m}_sd" for m in METRICS] + ["n_iter"]
+    rank = {m: k for k, m in enumerate(R_METHOD_ORDER)}
+    for (dataset, setting), table in summary.groupby(["dataset", "setting"]):
+        table = table.assign(rank=table.method.map(rank).fillna(len(rank))).sort_values(["rank", "method"])
+        table[cols].to_csv(folder / f"{dataset}_dgp{setting}.csv", index=False)
+    return folder
+
+
 def aggregate(layout, exp_names=None):
     """Write metrics_<exp>.csv and summary_<exp>.csv; report missing tasks."""
     out = {}
@@ -239,8 +263,10 @@ def aggregate(layout, exp_names=None):
         layout.summary_dir.mkdir(parents=True, exist_ok=True)
         metrics.to_csv(layout.summary_dir / f"metrics_{name}.csv", index=False)
         summary.to_csv(layout.summary_dir / f"summary_{name}.csv", index=False)
+        folder = export_results(layout, name, summary)
         incomplete = summary[summary.n_iter < exp.n_iter]
-        print(f"[aggregate] {name}: {len(metrics)} rows, {len(summary)} (dataset, setting, method) cells")
+        print(f"[aggregate] {name}: {len(metrics)} rows, {len(summary)} (dataset, setting, method) cells; "
+              f"per-setting tables in {folder}")
         if len(incomplete):
             print("  cells with fewer than {} iterations:\n{}".format(
                 exp.n_iter, incomplete[["dataset", "setting", "method", "n_iter"]].to_string(index=False)))
